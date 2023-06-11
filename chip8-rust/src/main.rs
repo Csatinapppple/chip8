@@ -29,7 +29,7 @@ const MEMORY_BEGIN: u16 = 0x200;
 struct Chip8{
     memory: [u8;0x1000],
     registers: [u8;0x10],
-    screen: [[u8;32];64],
+    screen: [[u8;64];32],
     address_register: u16,
     index_register: u16,
     key: u8,
@@ -42,28 +42,42 @@ fn main() {
     let mut c8 = Chip8 {
         memory: [0;0x1000],
         registers: [0;0x10],
-        screen: [[0;32];64],
+        screen: [[0;64];32],
         address_register: 0,
         index_register: 0,
         key: 0,
 	sound_timer: 60,
 	delay_timer: 60,
     };
-
+    
     loop{
 
+        
+        for x in 0..32{
+            for y in 0..64{
+                if c8.screen[x][y] != 0 {print!("{}",c8.screen[x][y])}
+                else {print!(" ")}
+            }
+            println!("");
+        }
+        thread::sleep(time::Duration::from_secs(10));
+        thread::sleep(SIXTY_HERTZ);
+        c8.delay_timer-=1;
+        c8.sound_timer-=1;
+        if c8.delay_timer == 0 {c8.delay_timer = 60}
+        if c8.sound_timer == 0 {c8.sound_timer = 60}
+        println!(
+            "delay timer = {} sound_timer = {}",
+            c8.delay_timer, c8.sound_timer    
+        );
     
-    
-    thread::sleep(SIXTY_HERTZ);
-    c8.delay_timer-=1;
-    c8.sound_timer-=1;
     }
-
-    /*
+    
+    /* 
     for y in 0..16 {
     	for x in 0..5{
     		//println!("x = {}, y = {}",x,y);
-    		println!("{:# 10b}",FONTS[y][x]);
+    		println!("{:#010b}",FONTS[y][x]);
     	}
     	println!("{}",y);
     }
