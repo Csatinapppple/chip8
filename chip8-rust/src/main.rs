@@ -31,6 +31,7 @@ struct Chip8{
     screen: [[u8;64];32],
     address_register: u16,
     index_register: u16,
+    nibble: u8,
     key: u8,
     sound_timer: u8,
     delay_timer: u8,
@@ -51,11 +52,14 @@ struct Chip8{
 
 */
 
+fn jmp(c8: &mut Chip8, index: u16){
+    c8.index_register = index;
+}
 
-fn put_sprite(&c8: Chip8, &sprite: u8[], x_start: u8, y_start: u8){
+fn put_sprite(c8: &Chip8, sprite: &mut [u8], x_start: u8, y_start: u8){
     if x_start > 64 - 8 {
         println!(" ERROR X AXIS OUT OF BOUNDS");
-    }else if y_start > sprite.len() - 64 {
+    }else if usize::from(y_start) > sprite.len() - 64 {
         println!(" ERROR Y AXIS OUT OF BOUNDS");
     }
 }
@@ -68,6 +72,7 @@ fn main() {
         screen: [[0;64];32],
         address_register: 0,
         index_register: 0,
+        nibble: 0,
         key: 0,
 	    sound_timer: 60,
 	    delay_timer: 60,
