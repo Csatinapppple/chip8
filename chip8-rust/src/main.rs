@@ -3,7 +3,7 @@ use std::time;
 use core::time::Duration;
 
 
-const FONTS: [[u8;5];16] = [//ROW COL
+const FONTS: [[u8;5];16] = [//col row
 	[0xf0,0x90,0x90,0x90,0xf0],//0
 	[0x20,0x60,0x20,0x20,0x70],//1
 	[0xF0,0x10,0xF0,0x80,0xF0],//2
@@ -25,7 +25,6 @@ const FONTS: [[u8;5];16] = [//ROW COL
 const SIXTY_HERTZ: Duration = time::Duration::from_micros(16670);
 const MEMORY_BEGIN: u16 = 0x200;
 
-
 struct Chip8{
     memory: [u8;0x1000],
     registers: [u8;0x10],
@@ -37,6 +36,30 @@ struct Chip8{
     delay_timer: u8,
 }
 
+/*put_sprite(x_start,y_start,)
+            |
+            v x_start_max
+|       5 6 7 8 9 0 1 2 3 64      iterates and replaces each byte 
+      5 0 0 0 0 0 0 0 0 0 0       with the binary of the byte
+      6 0 0 0 0 0 0 0 0 0 0       y_start_max = 64 - sprite.len()  
+      7 0 0 0 0 0 0 0 0 0 0
+      8 0 0 0 0 0 0 0 0 0 0
+      9 0 0 0 0 0 0 0 0 0 0
+      0 0 0 0 0 0 0 0 0 0 0
+      1 0 0 0 0 0 0 0 0 0 0
+     32 0 0 0 0 0 0 0 0 0 0
+
+*/
+
+
+fn put_sprite(&c8: Chip8, &sprite: u8[], x_start: u8, y_start: u8){
+    if x_start > 64 - 8 {
+        println!(" ERROR X AXIS OUT OF BOUNDS");
+    }else if y_start > sprite.len() - 64 {
+        println!(" ERROR Y AXIS OUT OF BOUNDS");
+    }
+}
+
 fn main() {
     
     let mut c8 = Chip8 {
@@ -46,8 +69,8 @@ fn main() {
         address_register: 0,
         index_register: 0,
         key: 0,
-	sound_timer: 60,
-	delay_timer: 60,
+	    sound_timer: 60,
+	    delay_timer: 60,
     };
     
     loop{
