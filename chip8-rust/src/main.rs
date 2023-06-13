@@ -3,7 +3,7 @@ use std::time;
 use core::time::Duration;
 
 
-const FONTS: [[u8;5];16] = [//col row
+const FONTS: [[u8;5];16] = [//col line
 	[0xf0,0x90,0x90,0x90,0xf0],//0
 	[0x20,0x60,0x20,0x20,0x70],//1
 	[0xF0,0x10,0xF0,0x80,0xF0],//2
@@ -42,7 +42,7 @@ struct Chip8{
             v x_start_max
 |       5 6 7 8 9 0 1 2 3 64      iterates and replaces each byte 
       5 0 0 0 0 0 0 0 0 0 0       with the binary of the byte
-      6 0 0 0 0 0 0 0 0 0 0       y_start_max = 64 - sprite.len()  
+      6 0 0 0 0 0 0 0 0 0 0       y_start_max = 32 - sprite.len()  
       7 0 0 0 0 0 0 0 0 0 0
       8 0 0 0 0 0 0 0 0 0 0
       9 0 0 0 0 0 0 0 0 0 0
@@ -56,12 +56,26 @@ fn jmp(c8: &mut Chip8, index: u16){
     c8.index_register = index;
 }
 
-fn put_sprite(c8: &Chip8, sprite: &mut [u8], x_start: u8, y_start: u8){
-    if x_start > 64 - 8 {
-        println!(" ERROR X AXIS OUT OF BOUNDS");
-    }else if usize::from(y_start) > sprite.len() - 64 {
-        println!(" ERROR Y AXIS OUT OF BOUNDS");
+fn put_sprite (c8: &Chip8, sprite: &[u8], x_start: u8, y_start: u8){
+    if x_start > 64 - 8 && usize::from(y_start) > 32 - sprite.len(){
+    		println!("put_sprite(..,x_start = {},y_start = {}) ERROR X AND Y AXIS OUT OF BOUNDS",
+    						 x_start,y_start);
+    		return;
+    }else if x_start > 64 - 8 {
+        println!("put_sprite(..,x_start = {},y_start = {}) ERROR X AXIS OUT OF BOUNDS",
+        				 x_start,y_start);
+    		return;
+    }else if usize::from(y_start) > 32 - sprite.len() {
+        println!("put_sprite(..,x_start = {},y_start = {}) ERROR Y AXIS OUT OF BOUNDS",
+        				 x_start,y_start);
+        return;
     }
+    
+    for y in y_start..y_start+sprite.len(){
+    	for x in x_start..x_start+8{
+    		c8.graphics[y][x]
+    	}
+		}
 }
 
 fn main() {
@@ -81,9 +95,9 @@ fn main() {
     loop{
 
         
-        for x in 0..32{
-            for y in 0..64{
-                if c8.screen[x][y] != 0 {print!("{}",c8.screen[x][y])}
+        for y in 0..32{
+            for x in 0..64{
+                if c8.screen[y][x] != 0 {print!("{}",c8.screen[x][y])}
                 else {print!(" ")}
             }
             println!("");
