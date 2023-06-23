@@ -70,15 +70,16 @@ fn put_sprite (c8: &Chip8, sprite: &[u8], x_start: u8, y_start: u8){
         				 x_start,y_start);
         return;
     }
-    //i + 8
+	//i + 7
     //to extract the last bit, bit-shift 7 times to the right
     //to extract the first bit, AND with 0b00000001 
-    //0b10011001
+    //(0b10011001 >> 7-n) & 0x01
     let mut i = 0usize;
     for y in y_start..y_start + sprite.len(){
         for x in x_start..x_start+8{
-            c8.screen[y][x] = (sprite[i] >> (8-1)-i) & 0x01; 
-            i += 1;
+            c8.screen[y][x] = (sprite[y - y_start] >> 7-i) & 0x01; 
+            println!("{} {}",i,(sprite[y - y_start] >> 7-i) & 0x01);
+            i+=1;
         }
         i = 0;
     }
@@ -103,7 +104,7 @@ fn main() {
         
         for y in 0..32{
             for x in 0..64{
-                if c8.screen[y][x] != 0 {print!("{}",c8.screen[x][y])}
+                if c8.screen[y][x] != 0 {print!("{}",c8.screen[y][x])}
                 else {print!(" ")}
             }
             println!("");
