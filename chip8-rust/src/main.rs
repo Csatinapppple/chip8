@@ -2,39 +2,127 @@ use core::time::Duration;
 use std::thread;
 use std::time;
 
-const FONTS: [[u8; 5]; 16] = [
+const FONTS: [u8; 5 * 16] = [
     //col line
-    [0xf0, 0x90, 0x90, 0x90, 0xf0], //0
-    [0x20, 0x60, 0x20, 0x20, 0x70], //1
-    [0xF0, 0x10, 0xF0, 0x80, 0xF0], //2
-    [0xF0, 0x10, 0xF0, 0x10, 0xF0], //3
-    [0x90, 0x90, 0xF0, 0x10, 0x10], //4
-    [0xF0, 0x80, 0xF0, 0x10, 0xF0], //5
-    [0xF0, 0x80, 0xF0, 0x90, 0xF0], //6
-    [0xF0, 0x10, 0x20, 0x40, 0x40], //7
-    [0xF0, 0x90, 0xF0, 0x90, 0xF0], //8
-    [0xF0, 0x90, 0xF0, 0x10, 0xF0], //9
-    [0xF0, 0x90, 0xF0, 0x90, 0x90], //a
-    [0xE0, 0x90, 0xE0, 0x90, 0xE0], //b
-    [0xF0, 0x80, 0x80, 0x80, 0xF0], //c
-    [0xE0, 0x90, 0x90, 0x90, 0xE0], //d
-    [0xF0, 0x80, 0xF0, 0x80, 0xF0], //e
-    [0xF0, 0x80, 0xF0, 0x80, 0x80], //f
+    0xf0, 0x90, 0x90, 0x90, 0xf0, //0
+    0x20, 0x60, 0x20, 0x20, 0x70, //1
+    0xF0, 0x10, 0xF0, 0x80, 0xF0, //2
+    0xF0, 0x10, 0xF0, 0x10, 0xF0, //3
+    0x90, 0x90, 0xF0, 0x10, 0x10, //4
+    0xF0, 0x80, 0xF0, 0x10, 0xF0, //5
+    0xF0, 0x80, 0xF0, 0x90, 0xF0, //6
+    0xF0, 0x10, 0x20, 0x40, 0x40, //7
+    0xF0, 0x90, 0xF0, 0x90, 0xF0, //8
+    0xF0, 0x90, 0xF0, 0x10, 0xF0, //9
+    0xF0, 0x90, 0xF0, 0x90, 0x90, //a
+    0xE0, 0x90, 0xE0, 0x90, 0xE0, //b
+    0xF0, 0x80, 0x80, 0x80, 0xF0, //c
+    0xE0, 0x90, 0x90, 0x90, 0xE0, //d
+    0xF0, 0x80, 0xF0, 0x80, 0xF0, //e
+    0xF0, 0x80, 0xF0, 0x80, 0x80, //f
 ];
+//&FONTS[0][..]
+
 
 const SIXTY_HERTZ: Duration = time::Duration::from_micros(16670);
 const MEMORY_BEGIN: u16 = 0x200;
 
 struct Chip8 {
     memory: [u8; 0x1000],
-    registers: [u8; 0x10],
-    screen: [[u8; 64]; 32],
-    address_register: u16,
-    index_register: u16,
-    nibble: u8,
-    key: u8,
+    registers: [u8; 16],
+    _I: u16,
+    screen: [[u8;64];32],
     sound_timer: u8,
     delay_timer: u8,
+    program_counter: u16,
+    stack: [u16; 16],
+    stack_pointer: u8,
+}
+
+impl Chip8{
+
+    pub fn init() -> Chip8{
+      Chip8{
+        memory: [0; 0x1000],
+        registers: [0; 16],
+        _I: 0,
+        screen: [[0; 64] ; 32],
+        sound_timer: 0,
+        delay_timer: 0,
+        program_counter: 0x200,
+        stack: [0; 16],
+        stack_pointer: 0,
+      }
+    }
+    
+    pub fn clear_display(c8: &mut Chip8){
+        for y in 0..32{
+            for x in 0..64{
+                c8.screen[y][x] = 0;
+            }
+        }
+    }
+
+    pub fn jmp_addr(c8: &mut Chip8, index: u16) {
+        c8.program_counter = index;
+    }
+  }
+
+fn call_addr(c8: &mut Chip8,index: u16) {
+    c8.stack_pointer+=1;
+    c8.stack[usize::from(c8.stack_pointer)] = c8.program_counter;
+    c8.program_counter = index;
+}
+
+fn ret(c8: &mut Chip8){
+    c8.program_counter = c8.stack[usize::from(c8.stack_pointer)];
+    c8.stack_pointer -=1;
+}
+
+
+fn main() {
+    let mut c8 = Chip8::init();
+    //emulate cycles
+    loop {
+        let test_sprite = [0b01011100, 0b01101001];
+        put_sprite(&mut c8, &test_sprite, 90usize, 70usize);
+
+        for y in 0..32 {
+            for x in 0..64 {
+                if c8.screen[y][x] != 0 {
+                    print!("{}", c8.screen[y][x]);
+                } else {
+                    print!(" ");
+                }
+            }
+            println!("");
+        }
+        thread::sleep(time::Duration::from_secs(10));
+        thread::sleep(SIXTY_HERTZ);
+        c8.delay_timer -= 1;
+        c8.sound_timer -= 1;
+        if c8.delay_timer == 0 {
+            c8.delay_timer = 60
+        }
+        if c8.sound_timer == 0 {
+            c8.sound_timer = 60
+        }
+        println!(
+            "delay timer = {} sound_timer = {}",
+            c8.delay_timer, c8.sound_timer
+        );
+    }
+    
+    /*
+    for y in 0..16 {
+        for x in 0..5{
+            //println!("x = {}, y = {}",x,y);
+            println!("{:#010b}",FONTS[y][x]);
+        }
+        println!("{}",y);
+    }
+    println!("Hello, world!");
+    */
 }
 
 /*put_sprite(x_start,y_start,)
@@ -51,11 +139,6 @@ struct Chip8 {
      32 0 0 0 0 0 0 0 0 0 0
 
 */
-
-fn jmp(c8: &mut Chip8, index: u16) {
-    c8.index_register = index;
-}
-
 fn put_sprite(c8: &mut Chip8, sprite: &[u8], x_start: usize, y_start: usize) {
     if x_start > 64 - 8 && y_start > 32 - sprite.len() {
         println!(
@@ -83,65 +166,10 @@ fn put_sprite(c8: &mut Chip8, sprite: &[u8], x_start: usize, y_start: usize) {
     let mut i = 0usize;
     for y in y_start..y_start + sprite.len() {
         for x in x_start..x_start + 8 {
-            c8.screen[y][x] = (sprite[y - y_start] >> 7 - i) & 0x01;
+            c8.screen[ y ][ x ] = (sprite[y - y_start] >> 7 - i) & 0x01;
             println!("{} {}", i, (sprite[y - y_start] >> 7 - i) & 0x01);
             i += 1;
         }
         i = 0;
     }
-}
-
-fn main() {
-    let mut c8 = Chip8 {
-        memory: [0; 0x1000],
-        registers: [0; 0x10],
-        screen: [[0; 64]; 32],
-        address_register: 0,
-        index_register: 0,
-        nibble: 0,
-        key: 0,
-        sound_timer: 60,
-        delay_timer: 60,
-    };
-
-    loop {
-        let test_sprite = [0b01011100, 0b01101001];
-        put_sprite(&mut c8, &test_sprite, 0usize, 0usize);
-
-        for y in 0..32 {
-            for x in 0..64 {
-                if c8.screen[y][x] != 0 {
-                    print!("{}", c8.screen[y][x])
-                } else {
-                    print!(" ")
-                }
-            }
-            println!("");
-        }
-        thread::sleep(time::Duration::from_secs(10));
-        thread::sleep(SIXTY_HERTZ);
-        c8.delay_timer -= 1;
-        c8.sound_timer -= 1;
-        if c8.delay_timer == 0 {
-            c8.delay_timer = 60
-        }
-        if c8.sound_timer == 0 {
-            c8.sound_timer = 60
-        }
-        println!(
-            "delay timer = {} sound_timer = {}",
-            c8.delay_timer, c8.sound_timer
-        );
-    }
-
-    /*
-    for y in 0..16 {
-        for x in 0..5{
-            //println!("x = {}, y = {}",x,y);
-            println!("{:#010b}",FONTS[y][x]);
-        }
-        println!("{}",y);
-    }
-    println!("Hello, world!");
-    */
 }
