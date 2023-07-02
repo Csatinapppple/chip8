@@ -51,8 +51,9 @@ pub struct CPU {
 
 
 impl CPU{
-
-    pub fn clear_display(&mut self){
+    
+    //00E0 (clear screen)
+    pub fn clear_screen(&mut self){
         for y in 0..32{
             for x in 0..64{
                 self.screen[y][x] = 0;
@@ -60,51 +61,45 @@ impl CPU{
         }
     }
     
-    pub fn fetch(&mut self) -> u16 {
+    //1NNN (jump)
+    pub fn jump(&mut self,pos: u16){
+        self.program_counter = pos;
+    }
+
+    //00EE return from subroutine
+    pub fn ret_subroutine(&mut self){
+        self.program_counter = self.stack[usize::from(self.stack_pointer)];
+        self.stack_pointer -= 1;
+    }
+
+    //2NNN return from subroutine at address
+    pub fn ret_from_sub_at_addr(&mut self,pos: u16){
+        self.stack_pointer +=1;
+        self.stack[usize::from(self.stack_pointer)] = self.program_counter;
+        self.program_counter = pos;
+    }
+
+    pub fn decode(&mut self) {
+        let x = self.fetch();
+        self.program_counter += 2;
+        match x & 0xf000 {
+            0x0000 => match x {
+                0x00E0 => self.clear_screen(),
+                0x00EE => self.ret_subroutine(),
+            },
+            0x1000 => self.jump(x & 0x0FFF),
+            0x2000 => self.ret_from_sub_at_addr(x & 0x0FFF)
+        }
+    }
+
+    pub fn fetch(&self) -> u16 {
         self.memory[usize::from(self.program_counter+1)] as u16 |
         (self.memory[usize::from(self.program_counter)] as u16) <<8
     }
 
-    //Initializes variables to default settings
-    pub fn init() -> CPU{
-        let mut ini = CPU{
-            memory: [0; 0x1000],
-            registers: [0; 16],
-            _I: 0,
-            screen: [[0; 64] ; 32],
-            sound_timer: 0,
-            delay_timer: 0,
-            program_counter: 0x200,
-            stack: [0; 16],
-            stack_pointer: 0,
-        };
-
-        for y in 0..16{
-            for x in  0..5{//common font storage is 0x050 to 0x01ff
-                ini.memory[ y * 5 + x + 0x050 ]=FONTS[y][x];
-            }
-        }
-        ini
-    }
-    //loads file into memory
-    pub fn load_file(&mut self,filepath: &str) -> io::Result<()>{
-        let f = File::open(filepath)?;
-        let mut reader = BufReader::new(f);
-        let mut buffer = Vec::new();
-        //Read file into vector
-        reader.read_to_end(&mut buffer)?;
-
-        //Read
-        for i in 0..buffer.len() {
-            self.memory[i+0x200] = buffer[i];
-            println!("byte = {}",buffer[i]);
-        }
-
-        Ok(())
-    }
 
 
-    /*put_sprite(x_start,y_start,)
+    /*put_sprite(x_start,y_start,)DXYN
                 |
                 v x_start_max
     |       5 6 7 8 9 0 1 2 3 64      iterates and replaces each byte
@@ -151,6 +146,45 @@ impl CPU{
             }
             i = 0;
         }
+    }
+
+
+    //Initializes variables to default settings
+    pub fn init() -> CPU{
+        let mut ini = CPU{
+            memory: [0; 0x1000],
+            registers: [0; 16],
+            _I: 0,
+            screen: [[0; 64] ; 32],
+            sound_timer: 0,
+            delay_timer: 0,
+            program_counter: 0x200,
+            stack: [0; 16],
+            stack_pointer: 0,
+        };
+
+        for y in 0..16{
+            for x in  0..5{//common font storage is 0x050 to 0x01ff
+                ini.memory[ y * 5 + x + 0x050 ]=FONTS[y][x];
+            }
+        }
+        ini
+    }
+    //loads file into memory
+    pub fn load_file(&mut self,filepath: &str) -> io::Result<()>{
+        let f = File::open(filepath)?;
+        let mut reader = BufReader::new(f);
+        let mut buffer = Vec::new();
+        //Read file into vector
+        reader.read_to_end(&mut buffer)?;
+
+        //Read
+        for i in 0..buffer.len() {
+            self.memory[i+0x200] = buffer[i];
+            println!("byte = {}",buffer[i]);
+        }
+
+        Ok(())
     }
 }
 
