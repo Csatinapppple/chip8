@@ -13,13 +13,14 @@ fn main() {
     let mut c8 = chip8::CPU::init();
     //load rom into cpu
     c8.load_file("rom/ibm_logo.bin");
+    
     //render and call emulate cycle
+    c8.put_sprite(&chip8::FONTS[0xa][..],0,0);
     loop {
         println!(
             "fetch = {:#06x}",
             c8.fetch()
         );
-        c8.program_counter += 2;
         for y in 0..32 {
             for x in 0..64 {
                 match c8.screen[y][x] {
