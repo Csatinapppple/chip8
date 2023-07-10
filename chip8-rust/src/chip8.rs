@@ -247,7 +247,7 @@ impl CPU{
 
         for y in 0..16{
             for x in  0..5{//common font storage is 0x050 to 0x01ff
-                ini.mem[ y * 5 + x ]=FONTS[y][x];
+                ini.mem[ y * 5 + x + 0x050 ]=FONTS[y][x];
             }
         }
         ini
