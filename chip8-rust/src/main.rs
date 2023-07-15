@@ -12,7 +12,7 @@ fn main() {
     //initiate cpu
     let mut c8 = chip8::CPU::init();
     //load rom into cpu
-    c8.load_file("rom/pong.bin");
+    c8.load_file("rom/ibm_logo.bin");
     //render and call emulate cycle
     loop {
         println!(

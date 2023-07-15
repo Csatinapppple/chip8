@@ -50,6 +50,8 @@ pub struct CPU {
     pub stack: [usize; 16],
     pub sp: usize,//stack pointer
     pub keys: [bool; 16],
+    pub key_pressed: bool,
+    pub key_wait: bool,
 }
 
 
@@ -113,7 +115,7 @@ impl CPU{
 
     /*
         original COSMAC VIP
-        8XY6 & 8XYE shift 1 bit to the right if right flag is set to true
+        8XY6 & 8XYE shift 1 bit to the right 
         and set vF to 1 if the bit that was shifted out was 1 and vice versa
         works for the last bit shifted to the right and the first bit to the
         left
@@ -121,22 +123,22 @@ impl CPU{
     //8XY6
     pub fn shift_right(&mut self, x:usize, y:usize){
         self.v[x] = self.v[y];    
-        if self.v[x] & 0b00000001 == 1{
-            self.v[0xf] = 1;
+        if self.v[x] & 0b00000001 == 0{
+            self.v[0xf] = 0;
         }
         else {
-            self.v[0xf] = 0;
+            self.v[0xf] = 1;
         }
         self.v[x] >>= 1;
     }
     //8XYE
     pub fn shift_left(&mut self, x:usize, y:usize){
         self.v[x] = self.v[y];
-        if self.v[x] & 0b10000000 == 1{
-            self.v[0xf] = 1;
+        if self.v[x] & 0b10000000 == 0{
+            self.v[0xf] = 0;
         }
         else {
-            self.v[0xf] = 0;
+            self.v[0xf] = 1;
         }
         self.v[x] <<= 1;
     }
@@ -145,6 +147,18 @@ impl CPU{
     pub fn random(&mut self, x: usize, nn: u8){
         let random_number: u8 = rand::thread_rng().gen();
         self.v[x] = random_number & nn;
+    }
+    
+    //FX0A blocks further instructions until a key is pressed, upon keypress, puts hex value of key
+    //on vX
+    pub fn get_key(&mut self, x: usize){
+        self.pc -= 2;
+        while !self.key_pressed    
+        {
+                if self.dt > 0 {self.dt -= 1;}
+                if self.st > 0 {self.st -= 1;}
+        }
+        self.v[x] = todo!();
     }
 
     pub fn decode(&mut self) {
@@ -192,7 +206,16 @@ impl CPU{
                 0x009E => self.pc += if self.keys[usize::from(self.v[x])]{2}else{0}, //EX9E skip if vX key is true
                 0x00A1 => self.pc += if !self.keys[usize::from(self.v[x])]{2}else{0}, //EXA1 skip if vX key is false
                 _ => unreachable!(),
-            }
+            },
+            0xF000 => match opcode & 0x00FF {
+                0x0007 => self.v[x] = self.dt, //FX07 sets vX to the current value of the delay timer
+                0x0015 => self.dt = self.v[x], //FX15 sets delay timer to vX
+                0x0018 => self.st = self.v[x], //FX18 sets sound timer to vX
+                0x001E => self._I += usize::from(self.v[x]), //FX1E add vX to index, does not affect vF
+                0x000A => self.get_key(x), //FX0A get key blocks progress while key is not pressed
+                _ => unreachable!(),
+            },
+
             _ => unreachable!(),
 
         }
@@ -243,6 +266,7 @@ impl CPU{
             stack: [0; 16],
             sp: 0,
             keys: [false; 16],
+            key_pressed: false,
         };
 
         for y in 0..16{
