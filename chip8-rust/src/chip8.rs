@@ -36,6 +36,8 @@ pub const FONTS: [[u8; 5]; 16] = [
 ];
 //&FONTS[0][..]
 
+pub const NO_KEY: u8 = 16;
+
 //currently frame limiting just sleeps for 60hz
 pub const SIXTY_HERTZ: Duration = time::Duration::from_micros(16670);
 
@@ -49,12 +51,9 @@ pub struct CPU {
     pub pc: usize,//program counter
     pub stack: [usize; 16],
     pub sp: usize,//stack pointer
-    pub keys: [bool; 16],
-    pub key_pressed: bool,
-    pub key_wait: bool,
+    pub keys: [bool; 16],// key array if they are true of false
+    pub key_pressed: u8, //hex value of key pressed
 }
-
-
 
 impl CPU{
     
@@ -150,18 +149,26 @@ impl CPU{
     }
     
     //FX0A blocks further instructions until a key is pressed, upon keypress, puts hex value of key
-    //on vX
+    //on vX the blockage is done by decrementing pc so it loops during the fetch stage, until a key
+    //is pressed that the tick registers it will subtract from delay timer and sound timer
     pub fn get_key(&mut self, x: usize){
-        self.pc -= 2;
-        while !self.key_pressed    
-        {
-                if self.dt > 0 {self.dt -= 1;}
-                if self.st > 0 {self.st -= 1;}
+        if self.key_pressed < NO_KEY { //sentinel value for no key pressed = 16 due to 0x0 to 0xf being
+                                   //0 to 15
+            self.v[x] = self.key_pressed;
+            return;
         }
-        self.v[x] = todo!();
+        self.pc -= 2;
+    }
+    
+    //FX33 divides a 8bit number into a section of 3 and stores in memory with address _I each
+    //digit, ie. 156 should instill mem[_I] = 1, mem[_I+1] = 5, mem[_I+2] = 6
+    pub fn dec_conv(&mut self,x: usize){//    128 64 32 16 8 4 2 1
+        self.mem[self._I] = self.v[x]   //  0b0   1  0  1  0 1 0 1
+        todo!();                        //    can be 0, 1, 2 and it depends on bit 1,2,3
+                                        //  0x51
     }
 
-    pub fn decode(&mut self) {
+    pub fn execute(&mut self) {
         let opcode: u16 = self.fetch();
         self.pc += 2;
         
@@ -203,8 +210,8 @@ impl CPU{
             0xC000 => self.random(x,nn),//CXNN get random number
             0xD000 => self.draw(x,y,n), //DXYN draw display sprite
             0xE000 => match opcode & 0x00FF {
-                0x009E => self.pc += if self.keys[usize::from(self.v[x])]{2}else{0}, //EX9E skip if vX key is true
-                0x00A1 => self.pc += if !self.keys[usize::from(self.v[x])]{2}else{0}, //EXA1 skip if vX key is false
+                0x009E => self.pc += if self.v[x] == self.key_pressed {2} else {0}, //EX9E skip if vX key is true
+                0x00A1 => self.pc += if self.v[x] != self.key_pressed {2} else {0}, //EXA1 skip if vX key is false
                 _ => unreachable!(),
             },
             0xF000 => match opcode & 0x00FF {
@@ -212,7 +219,9 @@ impl CPU{
                 0x0015 => self.dt = self.v[x], //FX15 sets delay timer to vX
                 0x0018 => self.st = self.v[x], //FX18 sets sound timer to vX
                 0x001E => self._I += usize::from(self.v[x]), //FX1E add vX to index, does not affect vF
-                0x000A => self.get_key(x), //FX0A get key blocks progress while key is not pressed
+                0x000A => self.get_key(x), //FX0A get key blocks progress while key is not pressed if key is pressed, puts hex value in vX
+                0x0029 => self._I = (self.v[x] & 0x000F) + 0x050, //FX29 font character, set I to the hex in Vx in memory ie. the fonts that were placed in 0x050
+                0x0033 => self.dec_conv(x), //FX33 Binary-coded decimal conversion
                 _ => unreachable!(),
             },
 
@@ -237,7 +246,7 @@ impl CPU{
             //offset of n present in y_coord+n is the amount of bytes in the sprite starting from I
             for x in x_coord..x_coord+8 {
                 if x >= 64 || y >= 32 {
-                    continue;
+                    break;
                 }
                 else{
                     self.screen[y][x] = (self.mem[self._I + y - y_coord] >> 7 - i) & 0x1;
@@ -266,7 +275,7 @@ impl CPU{
             stack: [0; 16],
             sp: 0,
             keys: [false; 16],
-            key_pressed: false,
+            key_pressed: NO_KEY, // sentinel value 
         };
 
         for y in 0..16{

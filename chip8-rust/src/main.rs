@@ -12,14 +12,14 @@ fn main() {
     //initiate cpu
     let mut c8 = chip8::CPU::init();
     //load rom into cpu
-    c8.load_file("rom/ibm_logo.bin");
+    c8.load_file("rom/pong.bin");
     //render and call emulate cycle
     loop {
         println!(
             "fetch = {:#06x}",
             c8.fetch()
         );
-        c8.decode();
+        c8.execute();
         for y in 0..32 {
             for x in 0..64 {
                 match c8.screen[y][x] {
