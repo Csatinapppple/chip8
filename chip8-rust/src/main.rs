@@ -19,7 +19,7 @@ fn main() {
             "fetch = {:#06x}",
             c8.fetch()
         );
-        c8.execute();
+        c8.tick(16);
         for y in 0..32 {
             for x in 0..64 {
                 match c8.screen[y][x] {

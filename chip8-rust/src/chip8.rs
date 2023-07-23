@@ -50,7 +50,7 @@ pub struct CPU {
     pub dt: u8,//delay timer
     pub pc: usize,//program counter
     pub stack: [usize; 16],
-    pub sp: usize,//stack pointer
+    pub sp: usize,//stack pointer should always be kept one above the current stack element.
     pub keys: [bool; 16],// key array if they are true of false
     pub key_pressed: u8, //hex value of key pressed
 }
@@ -68,14 +68,14 @@ impl CPU{
     
     //00EE return from subroutine
     pub fn ret_subroutine(&mut self){
-        self.pc = self.stack[self.sp];
         self.sp -= 1;
+        self.pc = self.stack[self.sp];
     }
  
     //2NNN return from subroutine at address
     pub fn ret_from_sub_at_addr(&mut self,nnn: usize){
-        self.sp +=1;
         self.stack[self.sp] = self.pc;
+        self.sp +=1;
         self.pc = nnn;
     }
 
@@ -163,14 +163,20 @@ impl CPU{
     //FX33 divides a 8bit number into a section of 3 and stores in memory with address _I each
     //digit, ie. 156 should instill mem[_I] = 1, mem[_I+1] = 5, mem[_I+2] = 6
     pub fn dec_conv(&mut self,x: usize){//    128 64 32 16 8 4 2 1
-        self.mem[self._I] = self.v[x]   //  0b0   1  0  1  0 1 0 1
+        self.mem[self._I] = self.v[x];  //  0b0   1  0  1  0 1 0 1
         todo!();                        //    can be 0, 1, 2 and it depends on bit 1,2,3
                                         //  0x51
     }
 
-    pub fn execute(&mut self) {
-        let opcode: u16 = self.fetch();
-        self.pc += 2;
+		pub fn tick(&mut self, key: u8){
+			let opcode = self.fetch();
+			
+			
+			self.execute(opcode);
+		}
+
+    pub fn execute(&mut self, opcode: u16) {
+        self.pc+=2;
         
         let nnn: usize = (opcode & 0x0FFF).into();
         let nn: u8 = (opcode & 0x00FF) as u8;
@@ -220,7 +226,7 @@ impl CPU{
                 0x0018 => self.st = self.v[x], //FX18 sets sound timer to vX
                 0x001E => self._I += usize::from(self.v[x]), //FX1E add vX to index, does not affect vF
                 0x000A => self.get_key(x), //FX0A get key blocks progress while key is not pressed if key is pressed, puts hex value in vX
-                0x0029 => self._I = (self.v[x] & 0x000F) + 0x050, //FX29 font character, set I to the hex in Vx in memory ie. the fonts that were placed in 0x050
+                0x0029 => self._I = usize::from((self.v[x] & 0x000F) + 0x050), //FX29 font character, set I to the hex in Vx in memory ie. the fonts that were placed in 0x050
                 0x0033 => self.dec_conv(x), //FX33 Binary-coded decimal conversion
                 _ => unreachable!(),
             },
@@ -302,4 +308,3 @@ impl CPU{
         Ok(())
     }
 }
-
